@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from typing import List, Optional
+from datetime import datetime, timedelta
 import pandas as pd
 
 from Presentation.api.schemas import (
@@ -7,8 +8,9 @@ from Presentation.api.schemas import (
     CollectionResponse,
     MeasurementSchema
 )
-from Presentation.dependencies import get_collect_use_case
+from Presentation.dependencies import get_collect_use_case, get_mongo_repository
 from application.use_cases.collect_quality_air import CollectQualityAir
+from Infrastructure.database.mongo_repository import MongoRepository
 
 router = APIRouter(tags=["collection"])
 
@@ -75,3 +77,45 @@ async def preview_collection(
         "shape": {"rows": len(df), "columns": len(df.columns)},
         "columns": df.columns.tolist()
     }
+
+
+@router.get("/storage/stats")
+async def get_storage_statistics(
+        country: Optional[str] = None,
+        repository: MongoRepository = Depends(get_mongo_repository)
+):
+    """
+    Récupère les statistiques sur les données stockées dans MongoDB
+    """
+    try:
+        stats = await repository.get_statistics(country=country)
+        return {
+            "success": True,
+            "data": stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/storage/latest")
+async def get_latest_stored_measurements(
+        country: Optional[str] = None,
+        limit: int = 50,
+        repository: MongoRepository = Depends(get_mongo_repository)
+):
+    """
+    Récupère les dernières mesures stockées dans MongoDB
+    """
+    try:
+        measurements = await repository.get_latest_measurements(country=country, limit=limit)
+        
+        # Convertir en dict pour la réponse
+        data = [m.to_dict() for m in measurements]
+        
+        return {
+            "success": True,
+            "count": len(data),
+            "measurements": data
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

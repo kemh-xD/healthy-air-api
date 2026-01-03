@@ -15,7 +15,7 @@ class QualityAirmeasure:
     parameter: str
     value: float
     unit: str
-    measure_at: datetime
+    measured_at: datetime
     coordinates: Optional[Coordinate] = None
     country: Optional[str] = None
     city: Optional[str] = None

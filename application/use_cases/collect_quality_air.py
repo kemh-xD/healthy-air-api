@@ -32,13 +32,13 @@ class CollectQualityAir:
             )
 
             "valider les data"
-            valid_measurements = self.validate_measurements(
+            valid_measurements = self._validate_measurements(
                 measurments
             )
 
             "Sauvegarder les data"
             if save_to_storage and self.repository:
-                saved_count = await self.repositpry.save_measurements(valid_measurements)
+                saved_count = await self.repository.save_measurements(valid_measurements)
                 print(f"✓ {saved_count} mesures sauvegardees")
 
                 "conversion en dataframe"
