@@ -7,6 +7,7 @@ from application.use_cases.collect_quality_air import CollectQualityAir
 from Infrastructure.external.openaq_client import OpenAQClient
 from Infrastructure.database.mongo_repository import MongoRepository
 from Infrastructure.config.settings import settings
+from application.use_cases.predict_quality_air import PredictQualityAir
 
 
 @lru_cache()
@@ -38,3 +39,8 @@ def get_analyze_use_case() -> AnalyzeQualityAir:
     """Use case pour la analyse stockage MongoDB"""
     repository = get_mongo_repository()
     return AnalyzeQualityAir(data_repository=repository)
+
+def get_predict_use_case() -> PredictQualityAir:
+    """Use case pour la predict stockage MongoDB"""
+    repository = get_mongo_repository()
+    return PredictQualityAir(data_repository=repository)

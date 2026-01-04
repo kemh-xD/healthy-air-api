@@ -8,10 +8,12 @@ from Presentation.api.schemas import (
     CollectionResponse,
     MeasurementSchema
 )
-from Presentation.dependencies import get_collect_use_case, get_mongo_repository, get_analyze_use_case
+from Presentation.dependencies import get_collect_use_case, get_mongo_repository, get_analyze_use_case, \
+    get_predict_use_case
 from application.use_cases.analyse_quality_air import AnalyzeQualityAir
 from application.use_cases.collect_quality_air import CollectQualityAir
 from Infrastructure.database.mongo_repository import MongoRepository
+from application.use_cases.predict_quality_air import PredictQualityAir
 
 router = APIRouter(tags=["collection"])
 
@@ -241,3 +243,159 @@ async def get_analysis_report(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+#routes pour les predictions
+@router.post("/predict/train/linear")
+async def train_linear_regression(
+        parameter: str = Query(..., description="Paramètre à prédire (pm25, pm10, etc.)"),
+        country: str = Query(None, description="Code pays"),
+        lookback: int = Query(24, ge=1, le=168, description="Heures à regarder en arrière"),
+        predictor: PredictQualityAir = Depends(get_predict_use_case)
+):
+    try:
+        result = await predictor.train_linear_model(
+            parameter=parameter,
+            country=country,
+            lookback=lookback
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+
+        response = {
+            "success": True,
+            "model_type": result["model_type"],
+            "parameter": result["parameter"],
+            "metrics": result["metrics"],
+            "lookback": result["lookback"]
+        }
+
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/predict/train/random-forest")
+async def train_random_forest(
+        parameter: str = Query(..., description="Paramètre à prédire"),
+        country: str = Query(None, description="Code pays"),
+        lookback: int = Query(24, ge=1, le=168),
+        n_estimators: int = Query(100, ge=10, le=500, description="Nombre d'arbres"),
+        predictor: PredictQualityAir = Depends(get_predict_use_case)
+):
+
+    try:
+        result = await predictor.train_random_forest(
+            parameter=parameter,
+            country=country,
+            lookback=lookback,
+            n_estimators=n_estimators
+        )
+
+        if "error" in result:
+            raise HTTPException(status_code=404, detail=result["error"])
+
+        response = {
+            "success": True,
+            "model_type": result["model_type"],
+            "parameter": result["parameter"],
+            "n_estimators": result["n_estimators"],
+            "metrics": result["metrics"],
+            "lookback": result["lookback"]
+        }
+
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/predict/train/future")
+async def predict_future(
+        parameter: str = Query(..., description="Paramètre à prédire"),
+        country: str = Query(None, description="Code pays"),
+        hours_ahead: int = Query(24, ge=1, le=168, description="Heures à prédire"),
+        model_type: str = Query("random_forest", description="linear ou random_forest"),
+        predictor: PredictQualityAir = Depends(get_predict_use_case)
+):
+    try:
+        if model_type == "linear":
+            model_result = await predictor.train_linear_model(parameter, country)
+        else:
+            model_result = await predictor.train_random_forest(parameter, country)
+
+        if "error" in model_result:
+            raise HTTPException(status_code=404, detail=model_result["error"])
+
+        # Faire les prédictions
+        predictions = await predictor.predict_future(model_result, hours_ahead)
+
+        return {
+            "success": True,
+            "parameter": parameter,
+            "model_type": model_result["model_type"],
+            "model_metrics": model_result["metrics"],
+            "predictions_count": len(predictions),
+            "predictions": predictions
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/predict/compare")
+async def compare_prediction_models(
+        parameter: str = Query(..., description="Paramètre à prédire"),
+        country: str = Query(None, description="Code pays"),
+        predictor: PredictQualityAir = Depends(get_predict_use_case)
+):
+
+    try:
+        comparison = await predictor.compare_models(parameter, country)
+
+        if "error" in comparison:
+            raise HTTPException(status_code=404, detail=comparison["error"])
+
+        return {
+            "success": True,
+            "comparison": comparison
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/predict/full-pipeline")
+async def full_prediction_pipeline(
+        parameter: str = Query(..., description="Paramètre à prédire"),
+        country: str = Query(None, description="Code pays"),
+        hours_ahead: int = Query(24, ge=1, le=168),
+        predictor: PredictQualityAir = Depends(get_predict_use_case)
+):
+
+    try:
+        #Comparer les modèles
+        comparison = await predictor.compare_models(parameter, country)
+
+        if "error" in comparison:
+            raise HTTPException(status_code=404, detail=comparison["error"])
+
+        # Entraîner le meilleur modèle
+        winner = comparison["winner"]
+        if winner == "Linear Regression":
+            model_result = await predictor.train_linear_model(parameter, country)
+        else:
+            model_result = await predictor.train_random_forest(parameter, country)
+
+        # Faire les prédictions
+        predictions = await predictor.predict_future(model_result, hours_ahead)
+
+        return {
+            "success": True,
+            "parameter": parameter,
+            "pipeline": {
+                "models_comparison": comparison,
+                "best_model": winner,
+                "model_metrics": model_result["metrics"],
+                "predictions_count": len(predictions),
+                "predictions": predictions
+            }
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
