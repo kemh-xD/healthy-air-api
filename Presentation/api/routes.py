@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from typing import List, Optional
 from datetime import datetime, timedelta
 import pandas as pd
@@ -8,7 +8,8 @@ from Presentation.api.schemas import (
     CollectionResponse,
     MeasurementSchema
 )
-from Presentation.dependencies import get_collect_use_case, get_mongo_repository
+from Presentation.dependencies import get_collect_use_case, get_mongo_repository, get_analyze_use_case
+from application.use_cases.analyse_quality_air import AnalyzeQualityAir
 from application.use_cases.collect_quality_air import CollectQualityAir
 from Infrastructure.database.mongo_repository import MongoRepository
 
@@ -119,3 +120,124 @@ async def get_latest_stored_measurements(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@router.get("/analysis/statistics")
+async def get_analysis_statistics(
+        parameter: str = Query(..., description="Paramètre à analyser (pm25, pm10, co, etc.)"),
+        country: str = Query(None, description="Code pays (ex: TG)"),
+        days: int = Query(7, ge=1, le=30, description="Nombre de jours"),
+        analyzer: AnalyzeQualityAir = Depends(get_analyze_use_case)
+):
+    try:
+        stats = await analyzer.calculate_statistics(
+            parameter=parameter,
+            country=country,
+            days=days
+        )
+
+        if "error" in stats:
+            raise HTTPException(status_code=404, detail=stats["error"])
+
+        return {
+            "success": True,
+            "data": stats
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/analysis/trend")
+async def get_analysis_trend(
+        parameter: str = Query(..., description="Paramètre à analyser"),
+        country: str = Query(None, description="Code pays"),
+        days: int = Query(7, ge=1, le=30),
+        analyzer: AnalyzeQualityAir = Depends(get_analyze_use_case)
+):
+    try:
+        trend = await analyzer.analyze_trend(
+            parameter=parameter,
+            country=country,
+            days=days
+        )
+        if "error" in trend:
+            raise HTTPException(status_code=404, detail=trend["error"])
+        return {
+            "success": True,
+            "data": trend
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/analysis/peaks")
+async def get_analysis_peaks(
+    parameter: str = Query(..., description="Paramètre à analyser"),
+    threshold: float = Query(..., description="Seuil de détection"),
+    country: str = Query(None, description="Code pays"),
+    days: int = Query(7, ge=1, le=30),
+    analyzer: AnalyzeQualityAir = Depends(get_analyze_use_case)
+):
+    try:
+
+        peaks = await analyzer.identify_peaks(
+            parameter=parameter,
+            country=country,
+            days=days,
+            threshold=threshold
+        )
+        if "error" in peaks:
+            raise HTTPException(status_code=404, detail=peaks["error"])
+        return {
+            "success": True,
+            "count": len(peaks),
+            "threshold": threshold,
+            "data": peaks
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("analysis/report")
+async def get_analysis_report(
+        parameter: str = Query(..., description="Paramètre à analyser"),
+        country: str = Query(None, description="Code pays"),
+        days: int = Query(7, ge=1, le=30),
+        threshold: float = Query(50.0, description="Seuil pour les pics"),
+        analyzer: AnalyzeQualityAir = Depends(get_analyze_use_case)
+):
+    try:
+        stats = await analyzer.calculate_statistics(
+            parameter,
+            country,
+            days
+        )
+        trend = await analyzer.analyze_trend(
+            parameter,
+            country,
+            days
+        )
+        peaks = await analyzer.identify_peaks(
+            parameter,
+            country,
+            days,
+            threshold
+        )
+
+        return {
+            "success": True,
+            "parameter": parameter,
+            "country": country,
+            "period_days": days,
+            "report": {
+                "statistiques": stats,
+                "tendance": trend,
+                "pics": {
+                    "count": len(peaks),
+                    "threshold": threshold,
+                    "list": peaks
+                }
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

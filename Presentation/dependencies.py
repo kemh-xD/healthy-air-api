@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from fastapi import Depends
 
+from application.use_cases.analyse_quality_air import AnalyzeQualityAir
 from application.use_cases.collect_quality_air import CollectQualityAir
 from Infrastructure.external.openaq_client import OpenAQClient
 from Infrastructure.database.mongo_repository import MongoRepository
@@ -32,3 +33,8 @@ def get_collect_use_case(
         data_source=client,
         repository=repository
     )
+
+def get_analyze_use_case() -> AnalyzeQualityAir:
+    """Use case pour la analyse stockage MongoDB"""
+    repository = get_mongo_repository()
+    return AnalyzeQualityAir(data_repository=repository)
