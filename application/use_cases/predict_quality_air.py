@@ -1,4 +1,4 @@
-from statistics import LinearRegression
+
 from typing import Dict, List, Tuple
 
 from sklearn.preprocessing import StandardScaler
@@ -10,6 +10,7 @@ from pandas.core.common import random_state
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
 
 from application.interfaces.data_repository import DataRepository
 
@@ -138,41 +139,40 @@ class PredictQualityAir:
             lookback: int = 24,
             n_estimators: int = 100
     ) -> Dict:
+        """Entraîne un modèle Random Forest"""
 
-        df = await self.prepare_data(
-            parameter,
-            country
-        )
+        df = await self.prepare_data(parameter, country)
 
         if df.empty:
-            return {"error": "pas assez de data"}
+            return {"error": "Pas assez de données"}
 
         x, y = self.create_sequences(df, lookback)
 
         if len(x) < 50:
-            return {"error": f"pas assez de donnes min 50 mais on a juste {len(x)}"}
+            return {"error": f"Pas assez de données : min 50 mais on a {len(x)}"}
 
         x_train, x_test, y_train, y_test = train_test_split(
             x, y, test_size=0.2, random_state=42
         )
 
         model = RandomForestRegressor(
-            n_estimation = n_estimators,
-            max_depth = 10,
-            random_state = 42,
-            #use tous les cpu
-            n_jobs = -1
+            n_estimators=n_estimators,
+            max_depth=10,
+            random_state=42,
+            n_jobs=-1
         )
 
-        model.fit(x_train, x_test)
+        model.fit(x_train, y_train)
 
-        #prediction
+        # Prédictions
         y_pred = model.predict(x_test)
 
+        # Métriques
         mse = mean_squared_error(y_test, y_pred)
         mae = mean_absolute_error(y_test, y_pred)
         r2 = r2_score(y_test, y_pred)
 
+        # Feature importance
         feature_importance = model.feature_importances_
         top_features = sorted(
             enumerate(feature_importance),
@@ -180,6 +180,7 @@ class PredictQualityAir:
             reverse=True
         )[:5]
 
+        print("Top 5 features importantes:")
         for idx, importance in top_features:
             print(f"   Hour -{lookback-idx}: {importance:.3f}")
 

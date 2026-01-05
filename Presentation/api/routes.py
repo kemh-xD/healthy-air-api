@@ -432,7 +432,7 @@ async def ask_chatbot(
 @router.get("/chatbot/explain-prediction")
 async def explain_current_prediction(
         parameter: str = Query("pm25"),
-        country: str = Query("TG"),
+        country: str | None = Query(None),
         chatbot: ChatbotQualityAir = Depends(get_chatbot_use_case)
 ):
 

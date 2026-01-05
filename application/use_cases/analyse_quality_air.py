@@ -34,15 +34,15 @@ class AnalyzeQualityAir:
         data_list = []
         for measure in measurements:
             data_list.append({
-                'timestamp': measure.date,
+                'timestamp': measure.measured_at,
                 'location': measure.location,
                 'city': measure.city,
                 'country': measure.country,
                 'parameter': measure.parameter,
                 'value': measure.value,
                 'unit': measure.unit,
-                'latitude': measure.coordinates.get('latitude') if measure.coordinates else None,
-                'longitude': measure.coordinates.get('longitude') if measure.coordinates else None,
+                'latitude': measure.coordinates.latitude if measure.coordinates else None,
+                'longitude': measure.coordinates.longitude if measure.coordinates else None,
             })
         if not data_list:
             print(f"aucune data found")
