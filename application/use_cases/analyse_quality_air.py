@@ -8,7 +8,7 @@ from application.interfaces.data_repository import DataRepository
 
 class AnalyzeQualityAir:
 
-    def __init__(self):
+    def __init__(self, data_repository: DataRepository):
 
         self.data_repository = data_repository
         print("AnalyzeQualityAir initialisé avec le repository")

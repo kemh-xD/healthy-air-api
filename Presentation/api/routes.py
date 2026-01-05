@@ -6,11 +6,12 @@ import pandas as pd
 from Presentation.api.schemas import (
     CollectionRequest,
     CollectionResponse,
-    MeasurementSchema
+    MeasurementSchema, ChatRequest
 )
 from Presentation.dependencies import get_collect_use_case, get_mongo_repository, get_analyze_use_case, \
-    get_predict_use_case
+    get_predict_use_case, get_chatbot_use_case
 from application.use_cases.analyse_quality_air import AnalyzeQualityAir
+from application.use_cases.chatbot_quality_air import ChatbotQualityAir
 from application.use_cases.collect_quality_air import CollectQualityAir
 from Infrastructure.database.mongo_repository import MongoRepository
 from application.use_cases.predict_quality_air import PredictQualityAir
@@ -399,3 +400,71 @@ async def full_prediction_pipeline(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# Schémas
+
+
+
+@router.post("/chatbot/ask")
+async def ask_chatbot(
+        request: ChatRequest,
+        chatbot: ChatbotQualityAir = Depends(get_chatbot_use_case)
+):
+
+    try:
+        response = await chatbot.chat(
+            user_message=request.message,
+            parameter=request.parameter,
+            country=request.country,
+            include_context=request.include_context
+        )
+
+        if "error" in response:
+            raise HTTPException(status_code=500, detail=response["error"])
+
+        return response
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/chatbot/explain-prediction")
+async def explain_current_prediction(
+        parameter: str = Query("pm25"),
+        country: str = Query("TG"),
+        chatbot: ChatbotQualityAir = Depends(get_chatbot_use_case)
+):
+
+    try:
+        explanation = await chatbot.explain_prediction(parameter, country)
+
+        if "error" in explanation:
+            raise HTTPException(status_code=404, detail=explanation["error"])
+
+        return explanation
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/chatbot/reset")
+async def reset_chatbot_conversation(
+        chatbot: ChatbotQualityAir = Depends(get_chatbot_use_case)
+):
+
+    chatbot.reset_conversation()
+    return {"success": True, "message": "Conversation réinitialisée"}
+
+
+@router.get("/chatbot/history")
+async def get_chatbot_history(
+        chatbot: ChatbotQualityAir = Depends(get_chatbot_use_case)
+):
+
+    history = chatbot.get_conversation_history()
+    return {
+        "success": True,
+        "conversation_length": len(history),
+        "history": history
+    }

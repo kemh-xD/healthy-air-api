@@ -30,3 +30,9 @@ class MeasurementSchema(BaseModel):
     measured_at: datetime
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+
+class ChatRequest(BaseModel):
+    message: str
+    parameter: str = "pm25"
+    country: str = "TG"
+    include_context: bool = True
