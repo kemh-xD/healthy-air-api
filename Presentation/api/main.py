@@ -1,6 +1,7 @@
 # Presentation/api/main.py
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from Presentation.api.routes import router
@@ -34,6 +35,19 @@ app = FastAPI(
     description="API pour collecter et analyser les données de qualité de l'air",
     version="1.0.0",
     lifespan=lifespan
+)
+
+# Configuration CORS pour permettre les requêtes depuis React
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000",  # React (Create React App)
+        "http://localhost:5173",  # Vite
+        "http://localhost:5174",  # Vite alternative port
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],  # Autorise toutes les méthodes (GET, POST, etc.)
+    allow_headers=["*"],  # Autorise tous les headers
 )
 
 

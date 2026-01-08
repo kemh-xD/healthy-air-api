@@ -38,7 +38,7 @@ class PredictQualityAir:
         for measure in measurements:
             if measure.parameter == parameter:
                 data_list.append({
-                    'timestamp': measure.date,
+                    'timestamp': measure.measured_at,
                     'value': measure.value,
                     'location': measure.location
                 })

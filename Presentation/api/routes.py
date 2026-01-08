@@ -62,7 +62,7 @@ async def collect_air_quality(
 
 @router.get("/collect/preview")
 async def preview_collection(
-        country: str = "TG",
+        country: Optional[str] = None,
         parameters: Optional[List[str]] = None,
         use_case: CollectQualityAir = Depends(get_collect_use_case)
 ):
@@ -432,7 +432,7 @@ async def ask_chatbot(
 @router.get("/chatbot/explain-prediction")
 async def explain_current_prediction(
         parameter: str = Query("pm25"),
-        country: str = Query("TG"),
+        country: Optional[str] = Query(None),
         chatbot: ChatbotQualityAir = Depends(get_chatbot_use_case)
 ):
 
