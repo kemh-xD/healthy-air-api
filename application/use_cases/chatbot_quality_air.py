@@ -39,7 +39,7 @@ class ChatbotQualityAir:
     async def get_context_data(
             self,
             parameter: str = "pm25",
-            country: str = "TG"
+            country: str = None
     ) -> Dict:
         """Récupère les données contextuelles"""
         try:
@@ -157,22 +157,47 @@ TON STYLE :
                 "content": result["choices"][0]["message"]["content"]
             }
 
+
     async def chat(
             self,
             user_message: str,
             parameter: str = "pm25",
-            country: str = "TG",
+            country: str = None,
             include_context: bool = True
     ) -> Dict:
 
 
         print(f"\nQuestion : {user_message}")
+        country_label = country if country else "toutes les régions disponibles"
 
         # Récupérer le contexte
         context_data = {}
         if include_context:
             print("Récupération du contexte...")
             context_data = await self.get_context_data(parameter, country)
+
+
+        # AUCUNE DONNÉE DISPONIBLE
+        if include_context:
+            has_stats = context_data.get("current_statistics")
+            has_trend = context_data.get("trend")
+
+            if not has_stats and not has_trend:
+                return {
+                    "success": True,
+                    "message": (
+                        f"Je ne dispose actuellement d’aucune donnée récente sur la qualité de l’air "
+                        f"pour {country_label}.\n\n"
+                        "Causes possibles :\n"
+                        "- collecte non encore lancée\n"
+                        "- base de données vide\n"
+                        "- aucune mesure pour cette zone\n\n"
+                        "Merci de réessayer plus tard "
+                    ),
+                    "context_used": None,
+                    "provider": "system"
+                }
+
 
         # Construire le prompt système
         system_prompt = self.build_system_prompt(context_data)
@@ -235,7 +260,7 @@ TON STYLE :
     async def explain_prediction(
             self,
             parameter: str = "pm25",
-            country: str = "TG"
+            country: str = None
     ) -> Dict:
         """Génère une explication des prédictions"""
 

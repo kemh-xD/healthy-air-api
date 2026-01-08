@@ -34,5 +34,5 @@ class MeasurementSchema(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     parameter: str = "pm25"
-    country: str = "TG"
+    country: Optional[str] = None
     include_context: bool = True

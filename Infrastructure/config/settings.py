@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     OPENAQ_API_KEY: str = ""
     OPENAQ_DEFALUT_COUNTRY: str = "TG"
 
+    HATBOT_PROVIDER: str = "groq"
+    GROQ_API_KEY: str
+
     # Collection Settings
     COLLECTION_INTERVAL_MINUTES: int = 30
     DEFAULT_PARAMETERS: str = "pm25,pm10"

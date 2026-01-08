@@ -2,6 +2,8 @@ from functools import lru_cache
 
 from fastapi import Depends
 
+from application.interfaces import data_repository
+from application.interfaces.data_repository import DataRepository
 from application.use_cases.analyse_quality_air import AnalyzeQualityAir
 from application.use_cases.chatbot_quality_air import ChatbotQualityAir
 from application.use_cases.collect_quality_air import CollectQualityAir
@@ -46,36 +48,10 @@ def get_predict_use_case() -> PredictQualityAir:
     repository = get_mongo_repository()
     return PredictQualityAir(data_repository=repository)
 
-_chatbot_instance = None
 
-def get_chatbot_use_case() -> ChatbotQualityAir:
-    """
-    Retourne une instance du chatbot (singleton pour conserver l'historique)
-    """
-    global _chatbot_instance
-
-    if _chatbot_instance is None:
-        repository = get_mongo_repository()
-
-        # Récupérer la configuration selon le provider
-        provider = settings.CHATBOT_PROVIDER
-
-        if provider == "groq":
-            api_key = settings.GROQ_API_KEY if hasattr(settings, 'GROQ_API_KEY') else ""
-        elif provider == "anthropic":
-            api_key = settings.ANTHROPIC_API_KEY if hasattr(settings, 'ANTHROPIC_API_KEY') else ""
-        elif provider == "openai":
-            api_key = settings.OPENAI_API_KEY if hasattr(settings, 'OPENAI_API_KEY') else ""
-        else:
-            api_key = ""
-
-        if not api_key:
-            print(f"{provider.upper()}_API_KEY non configurée")
-
-        _chatbot_instance = ChatbotQualityAir(
-            data_repository=repository,
-            api_key=api_key,
-            provider=provider
-        )
-
-    return _chatbot_instance
+def get_chatbot_use_case():
+    repository = get_mongo_repository()
+    return ChatbotQualityAir(
+        data_repository=repository,
+        api_key=settings.OPENAQ_API_KEY
+    )
